@@ -384,6 +384,17 @@ SA.HeroView = class HeroView {
                 }).join('')}
               </div>
             </div>
+
+            <div class="stat-group">
+              <h3>⚙️ Settings</h3>
+              <div class="settings-row">
+                <span class="settings-label">🎵 Music</span>
+                <button class="settings-mute-btn" id="hp-mute-btn">🔊</button>
+                <input type="range" class="settings-volume" id="hp-volume"
+                  min="0" max="100" step="1" value="45">
+                <span class="settings-vol-val" id="hp-vol-val">45%</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -397,6 +408,183 @@ SA.HeroView = class HeroView {
       anim.play(animSet.anims.idle);
     }
 
+    // Audio controls
+    const music    = document.getElementById('bg-music');
+    const muteBtn  = document.getElementById('hp-mute-btn');
+    const volSlider = document.getElementById('hp-volume');
+    const volVal   = document.getElementById('hp-vol-val');
+
+    if (music && muteBtn && volSlider) {
+      // Sync initial state
+      const syncUI = () => {
+        const muted = music.muted || music.volume === 0;
+        muteBtn.textContent = muted ? '🔕' : '🔊';
+        const pct = Math.round(music.volume * 100);
+        volSlider.value = pct;
+        if (volVal) volVal.textContent = pct + '%';
+      };
+      syncUI();
+
+      muteBtn.addEventListener('click', () => {
+        music.muted = !music.muted;
+        if (music.muted) {
+          music.pause();
+        } else {
+          music.play().catch(() => {});
+        }
+        syncUI();
+      });
+
+      volSlider.addEventListener('input', () => {
+        const v = parseInt(volSlider.value) / 100;
+        music.volume = v;
+        music.muted  = v === 0;
+        if (v > 0 && music.paused) music.play().catch(() => {});
+        if (volVal) volVal.textContent = volSlider.value + '%';
+        muteBtn.textContent = v === 0 ? '🔕' : '🔊';
+      });
+    }
+
     document.getElementById('hp-back')?.addEventListener('click', () => onBack?.());
+  }
+};
+
+// ─── GUILD VIEW ───────────────────────────────────────────────────────────────
+SA.GuildView = class GuildView {
+  constructor(containerEl) {
+    this.el = containerEl;
+    this._anims = [];
+  }
+
+  show({ saveData, onLeave }) {
+    const level    = SA.getLevelFromXP(saveData.xp);
+    const charDef  = SA.CHARACTERS_MAP?.[saveData.charClass] || null;
+    const className = charDef?.name || 'Adventurer';
+
+    this.el.innerHTML = `
+      <div class="guild-screen">
+
+        <!-- Header bar -->
+        <div class="guild-header-bar">
+          <div class="guild-title-text">⚔ ADVENTURER'S GUILD</div>
+          <button class="guild-back-btn" id="guild-back">← Leave</button>
+        </div>
+
+        <div class="guild-interior-scene">
+
+          <!-- Interior wall background -->
+          <div class="guild-wall-strip"></div>
+
+          <!-- NPC floor row -->
+          <div class="guild-floor">
+            <div class="guild-npc-wrap">
+              <canvas id="guild-npc-citizen" class="guild-npc-canvas"></canvas>
+              <div class="guild-npc-name">CITIZEN</div>
+            </div>
+            <div class="guild-npc-wrap">
+              <canvas id="guild-npc-master" class="guild-npc-canvas"></canvas>
+              <div class="guild-npc-name">GUILDMASTER</div>
+            </div>
+            <div class="guild-npc-wrap">
+              <canvas id="guild-npc-mage" class="guild-npc-canvas"></canvas>
+              <div class="guild-npc-name">MAGE</div>
+            </div>
+          </div>
+
+          <!-- Guildmaster dialogue -->
+          <div class="guild-dialogue">
+            <div class="guild-dialogue-avatar">🧙</div>
+            <div class="guild-dialogue-body">
+              <div class="guild-dialogue-name">Guildmaster Aldric</div>
+              <div class="guild-dialogue-text">
+                Ah, ${saveData.heroName}! A Level ${level} ${className} — impressive!
+                The roads are treacherous lately. Stock up on spells before venturing further.
+                Our mages can teach you the arcane arts… for a price. Good hunting!
+              </div>
+            </div>
+          </div>
+
+          <!-- Quest board / stats -->
+          <div class="guild-board">
+            <div class="guild-board-title">📋 ADVENTURER RECORD</div>
+            <div class="guild-stat-row"><span>⚔️ Battles Won</span><span>${saveData.battlesWon || 0}</span></div>
+            <div class="guild-stat-row"><span>💀 Defeats</span><span>${saveData.battlesLost || 0}</span></div>
+            <div class="guild-stat-row"><span>💰 Gold</span><span>${saveData.gold || 0}</span></div>
+            <div class="guild-stat-row"><span>📖 Spells Known</span><span>${saveData.collectedSpellIds?.length || 0}</span></div>
+            <div class="guild-stat-row"><span>✨ Total XP</span><span>${saveData.xp}</span></div>
+            <div class="guild-stat-row"><span>🗺 Rank</span><span>${this._getRank(saveData)}</span></div>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    document.getElementById('guild-back')?.addEventListener('click', () => onLeave?.());
+    this._initNPCSprites();
+  }
+
+  _getRank(saveData) {
+    const w = saveData.battlesWon || 0;
+    if (w >= 30) return 'S — Legend';
+    if (w >= 20) return 'A — Champion';
+    if (w >= 10) return 'B — Veteran';
+    if (w >= 5)  return 'C — Adventurer';
+    return 'D — Rookie';
+  }
+
+  _initNPCSprites() {
+    // Draw a single frame from each NPC sprite sheet using a helper canvas
+    const npcs = [
+      { id: 'guild-npc-citizen', src: 'Assets/Assets_Guild/PNG/Citizen1_Idle.png', frameW: 64, frameH: 64, col: 0, row: 0, displaySize: 96 },
+      { id: 'guild-npc-master',  src: 'Assets/Assets_Guild/PNG/Guildmaster.png',   frameW: 32, frameH: 32, col: 0, row: 0, displaySize: 96 },
+      { id: 'guild-npc-mage',    src: 'Assets/Assets_Guild/PNG/Mage1.png',         frameW: 64, frameH: 64, col: 0, row: 0, displaySize: 96 }
+    ];
+
+    npcs.forEach(({ id, src, frameW, frameH, col, row, displaySize }) => {
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      canvas.width  = displaySize;
+      canvas.height = displaySize;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const img = new Image();
+      img.onload = () => {
+        const sx = col * frameW;
+        const sy = row * frameH;
+        ctx.clearRect(0, 0, displaySize, displaySize);
+        ctx.drawImage(img, sx, sy, frameW, frameH, 0, 0, displaySize, displaySize);
+
+        // Animate: cycle through frames in a gentle loop
+        let frame = 0;
+        const totalCols = Math.floor(img.naturalWidth / frameW);
+        const totalRows = Math.floor(img.naturalHeight / frameH);
+        const totalFrames = totalCols * totalRows;
+        const interval = setInterval(() => {
+          if (!canvas.isConnected) { clearInterval(interval); return; }
+          frame = (frame + 1) % totalFrames;
+          const fc = frame % totalCols;
+          const fr = Math.floor(frame / totalCols);
+          ctx.clearRect(0, 0, displaySize, displaySize);
+          ctx.drawImage(img, fc * frameW, fr * frameH, frameW, frameH, 0, 0, displaySize, displaySize);
+        }, 200);
+        this._anims.push(interval);
+      };
+      img.onerror = () => {
+        // Fallback placeholder
+        ctx.fillStyle = 'rgba(124,58,237,0.3)';
+        ctx.fillRect(0, 0, displaySize, displaySize);
+        ctx.fillStyle = '#a78bfa';
+        ctx.font = `${Math.floor(displaySize * 0.5)}px serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🧙', displaySize / 2, displaySize * 0.7);
+      };
+      img.src = src;
+    });
+  }
+
+  cleanup() {
+    this._anims.forEach(id => clearInterval(id));
+    this._anims = [];
   }
 };

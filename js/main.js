@@ -17,6 +17,7 @@ SA.Game = class Game {
 
     // Map state
     this._mapView      = null;
+    this._guildView    = null;
     this._currentMapId = 'bog';
 
     // View instances (reused)
@@ -36,7 +37,24 @@ SA.Game = class Game {
     // Subscribe to global events
     SA.EventBus.on('battle:end', (result) => this._onBattleEnd(result));
 
+    // Start background music on first user interaction (browser autoplay policy)
+    this._setupMusic();
+
     this._showTitle();
+  }
+
+  _setupMusic() {
+    const music = document.getElementById('bg-music');
+    if (!music) return;
+    music.volume = 0.45;
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      music.play().catch(() => {});
+    };
+    document.addEventListener('pointerdown', start, { once: true });
+    document.addEventListener('keydown',     start, { once: true });
   }
 
   // ── SCREEN ROUTING ─────────────────────────────────────────────────────────
@@ -45,6 +63,7 @@ SA.Game = class Game {
     this.screenEl.innerHTML = '';
     if (this._battleView) { this._battleView.cleanup(); this._battleView = null; }
     if (this._mapView)    { this._mapView.cleanup();    this._mapView    = null; }
+    if (this._guildView)  { this._guildView.cleanup();  this._guildView  = null; }
   }
 
   _showTitle() {
@@ -121,7 +140,8 @@ SA.Game = class Game {
       onBattle:    (enemyDef, level)    => this._startBattle(enemyDef, level),
       onSpellbook: ()                   => this._showSpellbook(),
       onHero:      ()                   => this._showHeroProfile(),
-      onMapChange: (targetMap, entry)   => this._showMap(targetMap, entry)
+      onMapChange: (targetMap, entry)   => this._showMap(targetMap, entry),
+      onGuild:     ()                   => this._showGuild()
     });
     this._mapView = view;
   }
@@ -149,6 +169,17 @@ SA.Game = class Game {
     this._clearScreen('screen-hero');
     const view = new SA.HeroView(this.screenEl);
     view.show({ saveData: this.saveData, onBack: () => this._showWorld() });
+  }
+
+  _showGuild() {
+    if (!this.saveData) return;
+    this._clearScreen('screen-guild');
+    const view = new SA.GuildView(this.screenEl);
+    this._guildView = view;
+    view.show({
+      saveData: this.saveData,
+      onLeave: () => this._showWorld()
+    });
   }
 
   _startBattle(enemyDef, enemyLevel) {

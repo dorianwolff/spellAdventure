@@ -156,10 +156,7 @@
   flex-shrink: 0;
 }
 
-/* Enemy faces left (visually), hero faces right — they look at each other */
-.enemy-sprite-container {
-  transform: scaleX(-1);
-}
+/* Enemy uses row 1 (West/left-facing) — naturally faces the hero. No CSS flip. */
 
 .battle-sprite {
   display: block;

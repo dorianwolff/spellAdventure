@@ -8,24 +8,25 @@ window.SA = window.SA || {};
 
 const ORC_SPRITE_BASE = 'Assets/Assets_Enemy/PNG/';
 
+// Row 1 = West (left-facing) — enemies face LEFT in battle, no CSS flip needed
 const ORC_ANIMS = {
   orc1: {
-    idle:   { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:2, fps:6,  loop:true  },
-    attack: { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_attack_with_shadow.png', w:512,  h:256, cols:8,  row:2, fps:12, loop:false },
-    hurt:   { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:2, fps:10, loop:false },
-    death:  { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_death_with_shadow.png',  w:512,  h:256, cols:8,  row:2, fps:8,  loop:false }
+    idle:   { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:1, fps:6,  loop:true  },
+    attack: { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_attack_with_shadow.png', w:512,  h:256, cols:8,  row:1, fps:12, loop:false },
+    hurt:   { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:1, fps:10, loop:false },
+    death:  { sheet: ORC_SPRITE_BASE+'Orc1/With_shadow/orc1_death_with_shadow.png',  w:512,  h:256, cols:8,  row:1, fps:8,  loop:false }
   },
   orc2: {
-    idle:   { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:2, fps:6,  loop:true  },
-    attack: { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_attack_with_shadow.png', w:512,  h:256, cols:8,  row:2, fps:12, loop:false },
-    hurt:   { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:2, fps:10, loop:false },
-    death:  { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_death_with_shadow.png',  w:512,  h:256, cols:8,  row:2, fps:8,  loop:false }
+    idle:   { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:1, fps:6,  loop:true  },
+    attack: { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_attack_with_shadow.png', w:512,  h:256, cols:8,  row:1, fps:12, loop:false },
+    hurt:   { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:1, fps:10, loop:false },
+    death:  { sheet: ORC_SPRITE_BASE+'Orc2/With_shadow/orc2_death_with_shadow.png',  w:512,  h:256, cols:8,  row:1, fps:8,  loop:false }
   },
   orc3: {
-    idle:   { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:2, fps:6,  loop:true  },
-    attack: { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_attack_with_shadow.png', w:512,  h:256, cols:8,  row:2, fps:12, loop:false },
-    hurt:   { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:2, fps:10, loop:false },
-    death:  { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_death_with_shadow.png',  w:512,  h:256, cols:8,  row:2, fps:8,  loop:false }
+    idle:   { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_idle_with_shadow.png',   w:256,  h:256, cols:4,  row:1, fps:6,  loop:true  },
+    attack: { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_attack_with_shadow.png', w:512,  h:256, cols:8,  row:1, fps:12, loop:false },
+    hurt:   { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_hurt_with_shadow.png',   w:384,  h:256, cols:6,  row:1, fps:10, loop:false },
+    death:  { sheet: ORC_SPRITE_BASE+'Orc3/With_shadow/orc3_death_with_shadow.png',  w:512,  h:256, cols:8,  row:1, fps:8,  loop:false }
   }
 };
 

@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spell Adventure — Map Editor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0b14;
+      --bg2:      #15121f;
+      --bg3:      #1e1a2e;
+      --border:   rgba(124,58,237,0.25);
+      --accent:   #7c3aed;
+      --accent2:  #a78bfa;
+      --gold:     #fbbf24;
+      --text:     #e2e8f0;
+      --text2:    #94a3b8;
+      --red:      #ef4444;
+      --green:    #4ade80;
+      --panel-w:  220px;
+      --prop-w:   260px;
+      --hdr-h:    44px;
+      --foot-h:   28px;
+      --font-px:  'Courier New', monospace;
+    }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-px); font-size: 13px; }
+
+    /* ── HEADER ────────────────────────────────────────────────── */
+    #header {
+      height: var(--hdr-h);
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      flex-shrink: 0;
+    }
+    #header h1 { font-size: 13px; color: var(--accent2); letter-spacing: 2px; margin-right: 8px; }
+
+    .hdr-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      cursor: pointer;
+      font-family: var(--font-px);
+      font-size: 12px;
+      transition: border-color .15s, background .15s;
+    }
+    .hdr-btn:hover { border-color: var(--accent); background: rgba(124,58,237,.15); }
+    .hdr-btn.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .hdr-btn.primary:hover { background: #6d28d9; }
+    .hdr-btn.danger  { border-color: var(--red); color: var(--red); }
+    .hdr-btn.danger:hover { background: rgba(239,68,68,.15); }
+
+    .hdr-sep { flex: 1; }
+    .hdr-tool-group { display: flex; gap: 4px; }
+
+    .tool-btn {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .tool-btn:hover { border-color: var(--accent); color: var(--accent2); }
+    .tool-btn.active { border-color: var(--accent); background: rgba(124,58,237,.3); color: var(--accent2); }
+
+    /* Brush size buttons (shown only in tile mode) */
+    #brush-group {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      padding: 0 6px;
+      border-left: 1px solid var(--border);
+    }
+    #brush-group label { font-size: 10px; color: var(--text2); white-space: nowrap; }
+    .brush-btn {
+      width: 24px; height: 24px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text2);
+      cursor: pointer;
+      font-family: var(--font-px);
+      font-size: 11px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .brush-btn:hover { border-color: var(--accent); color: var(--accent2); }
+    .brush-btn.active { border-color: var(--accent); background: rgba(124,58,237,.3); color: var(--accent2); }
+
+    /* ── MAIN LAYOUT ───────────────────────────────────────────── */
+    #app {
+      display: flex;
+      height: calc(100vh - var(--hdr-h) - var(--foot-h));
+    }
+
+    /* ── LEFT SIDEBAR ──────────────────────────────────────────── */
+    #sidebar-left {
+      width: var(--panel-w);
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* Asset library panel (default) */
+    #lib-panel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    #lib-search {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #lib-search input {
+      width: 100%;
+      padding: 4px 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-px);
+      font-size: 12px;
+      outline: none;
+    }
+    #lib-search input:focus { border-color: var(--accent); }
+    #lib-scroll { flex: 1; overflow-y: auto; padding: 6px; }
+
+    .lib-group { margin-bottom: 10px; }
+    .lib-group-title {
+      font-size: 10px;
+      color: var(--accent2);
+      letter-spacing: 1px;
+      padding: 4px 2px 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
+      cursor: pointer;
+      user-select: none;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .lib-group-title::before { content: '▾'; font-size: 9px; }
+    .lib-group-title.collapsed::before { content: '▸'; }
+    .lib-group-items { display: flex; flex-wrap: wrap; gap: 4px; }
+    .lib-group.collapsed .lib-group-items { display: none; }
+
+    .asset-item {
+      width: 52px; height: 52px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      cursor: grab;
+      overflow: hidden;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .asset-item:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(124,58,237,.4); }
+    .asset-item.selected { border-color: var(--gold); box-shadow: 0 0 10px rgba(251,191,36,.4); }
+    .asset-item img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+    .asset-item .asset-label {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.7);
+      font-size: 8px; text-align: center; padding: 1px;
+      color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .asset-sprite {
+      width: 52px; height: 52px;
+      background-size: 208px 208px;
+      background-position: 0 0;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+    }
+
+    /* Tileset picker panel (shown in tile mode) */
+    #tile-panel {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    #picker-header {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #picker-header select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-px);
+      font-size: 11px;
+      padding: 4px 6px;
+      outline: none;
+      cursor: pointer;
+    }
+    #picker-header select:focus { border-color: var(--accent); }
+    #picker-wrap {
+      flex: 1;
+      overflow: auto;
+      padding: 4px;
+      background: #090810;
+    }
+    #picker-canvas {
+      display: block;
+      image-rendering: pixelated;
+      cursor: crosshair;
+    }
+    #picker-status {
+      padding: 5px 8px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--text2);
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── MAP CANVAS AREA ────────────────────────────────────────── */
+    #map-container {
+      flex: 1;
+      overflow: auto;
+      background: repeating-linear-gradient(45deg, #09080e 0px, #09080e 10px, #0d0b14 10px, #0d0b14 20px);
+      position: relative;
+    }
+    #canvas-wrap {
+      position: relative;
+      display: inline-block;
+      cursor: crosshair;
+      transform-origin: top left;
+    }
+    #map-canvas  { display: block; }
+    #hover-canvas {
+      position: absolute; top: 0; left: 0;
+      /* NOTE: pointer-events must be enabled — this canvas IS the interaction surface */
+    }
+
+    /* ── RIGHT SIDEBAR — PROPERTIES ─────────────────────────────── */
+    #sidebar-right {
+      width: var(--prop-w);
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .right-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .right-tab {
+      flex: 1; padding: 8px 4px; text-align: center;
+      font-size: 11px; color: var(--text2); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .15s;
+    }
+    .right-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+    #right-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .prop-section { margin-bottom: 14px; }
+    .prop-section-title {
+      font-size: 9px; color: var(--accent2); letter-spacing: 1px;
+      padding-bottom: 5px; margin-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .field { margin-bottom: 8px; }
+    .field label { display: block; font-size: 10px; color: var(--text2); margin-bottom: 3px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 5px 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-px);
+      font-size: 12px;
+      outline: none;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 52px; }
+    .field input[type="color"] { padding: 2px; height: 28px; cursor: pointer; }
+    .field input[type="number"] { width: 100%; }
+
+    .field-row { display: flex; gap: 6px; align-items: flex-end; }
+    .field-row .field { flex: 1; margin-bottom: 0; }
+
+    .prop-hint { font-size: 10px; color: var(--text2); line-height: 1.5; padding: 6px 8px; background: var(--bg3); border-radius: 4px; }
+
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    .tag-chip {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      border: 1px solid;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .tag-chip:hover { opacity: .7; }
+
+    .z-row { display: flex; align-items: center; gap: 6px; }
+    .z-btn {
+      width: 24px; height: 24px; border-radius: 4px;
+      border: 1px solid var(--border); background: var(--bg3);
+      color: var(--text2); cursor: pointer; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .z-btn:hover { border-color: var(--accent); color: var(--accent2); }
+    .z-val {
+      flex: 1; padding: 4px 6px; background: var(--bg3);
+      border: 1px solid var(--border); border-radius: 4px;
+      text-align: center; font-size: 12px;
+    }
+
+    .btn-delete {
+      width: 100%; padding: 7px; border-radius: 6px;
+      border: 1px solid var(--red); background: rgba(239,68,68,.1);
+      color: var(--red); cursor: pointer; font-family: var(--font-px); font-size: 12px;
+      margin-top: 6px; transition: background .15s;
+    }
+    .btn-delete:hover { background: rgba(239,68,68,.25); }
+
+    .btn-action {
+      width: 100%; padding: 7px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg3);
+      color: var(--text); cursor: pointer; font-family: var(--font-px); font-size: 12px;
+      margin-top: 4px; transition: all .15s;
+    }
+    .btn-action:hover { border-color: var(--accent); background: rgba(124,58,237,.15); }
+
+    /* ── LAYER LIST (Layers tab) ──────────────────────────────────── */
+    .layer-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+    .layer-item:hover    { border-color: var(--accent2); }
+    .layer-item.active   { border-color: var(--accent); background: rgba(124,58,237,.12); }
+    .layer-item .lv      { font-size: 15px; flex-shrink: 0; cursor: pointer; }
+    .layer-item .lname   { flex: 1; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+    .layer-item.active .lname { color: var(--text); }
+    .layer-item input[type=range] { width: 44px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); }
+    .layer-item .ldel    { font-size: 12px; color: var(--red); cursor: pointer; opacity: 0.5; flex-shrink: 0; }
+    .layer-item .ldel:hover { opacity: 1; }
+
+    .layer-add-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+    .layer-add-row select {
+      flex: 1;
+      padding: 4px 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-px);
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+    .layer-add-row select:focus { border-color: var(--accent); }
+    .layer-add-btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      background: rgba(124,58,237,.2);
+      color: var(--accent2);
+      cursor: pointer;
+      font-family: var(--font-px);
+      font-size: 11px;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .layer-add-btn:hover { background: rgba(124,58,237,.4); }
+    .layer-empty { font-size: 10px; color: var(--text2); padding: 10px 4px; }
+
+    /* ── STATUS BAR ─────────────────────────────────────────────── */
+    #footer {
+      height: var(--foot-h);
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 20px;
+      padding: 0 14px;
+      font-size: 11px; color: var(--text2);
+      flex-shrink: 0;
+    }
+    #footer span { display: flex; align-items: center; gap: 4px; }
+    #footer strong { color: var(--text); }
+
+    /* ── MODAL / EXPORT ─────────────────────────────────────────── */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 9999;
+      align-items: center; justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal-box {
+      width: min(700px, 90vw); max-height: 80vh;
+      background: var(--bg2); border: 1px solid var(--accent);
+      border-radius: 10px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    #modal-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--accent2);
+    }
+    #modal-close {
+      background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px;
+    }
+    #modal-body { flex: 1; overflow: auto; padding: 14px; }
+    #modal-body textarea {
+      width: 100%; height: 100%; min-height: 320px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: #4ade80; font-family: var(--font-px); font-size: 12px;
+      padding: 10px; border-radius: 6px; resize: none; outline: none;
+    }
+    #modal-footer {
+      padding: 10px 16px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(124,58,237,.4); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <h1>🗺 MAP EDITOR</h1>
+  <div class="hdr-tool-group">
+    <button class="tool-btn active" id="tool-select" title="Select / Move (V)">✥</button>
+    <button class="tool-btn" id="tool-tile"   title="Paint Tiles (T)">🖌</button>
+    <button class="tool-btn" id="tool-erase"  title="Erase Object (E)">✕</button>
+  </div>
+  <!-- Brush controls (visible only in tile mode) -->
+  <div id="brush-group">
+    <label>Brush:</label>
+    <button class="brush-btn active" data-size="1" title="1×1 brush">1</button>
+    <button class="brush-btn"        data-size="2" title="2×2 brush">2</button>
+    <button class="brush-btn"        data-size="3" title="3×3 brush">3</button>
+  </div>
+  <button class="hdr-btn" id="btn-grid">⊞ Grid</button>
+  <button class="hdr-btn" id="btn-clear" style="border-color:#ef4444;color:#ef4444">⌫ Clear All</button>
+  <div class="hdr-sep"></div>
+  <button class="hdr-btn" id="btn-import">📂 Load JSON</button>
+  <button class="hdr-btn primary" id="btn-export">⬇ Export JSON</button>
+</div>
+
+<!-- MAIN -->
+<div id="app">
+
+  <!-- LEFT SIDEBAR -->
+  <div id="sidebar-left">
+
+    <!-- Object asset library (select / erase mode) -->
+    <div id="lib-panel">
+      <div id="lib-search"><input type="text" id="lib-filter" placeholder="🔍 Search assets…"></div>
+      <div id="lib-scroll"><!-- populated by JS --></div>
+    </div>
+
+    <!-- Tileset picker (tile paint mode) -->
+    <div id="tile-panel">
+      <div id="picker-header">
+        <select id="picker-tileset-sel" title="Choose tileset to paint from"></select>
+      </div>
+      <div id="picker-wrap">
+        <canvas id="picker-canvas"></canvas>
+      </div>
+      <div id="picker-status">Click to select tile · Right-click = erase</div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: CANVAS -->
+  <div id="map-container">
+    <div id="canvas-wrap">
+      <canvas id="map-canvas"></canvas>
+      <canvas id="hover-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT: PROPERTIES -->
+  <div id="sidebar-right">
+    <div class="right-tabs">
+      <div class="right-tab active" data-tab="props">Object</div>
+      <div class="right-tab" data-tab="layers">Layers</div>
+      <div class="right-tab" data-tab="map">Map</div>
+    </div>
+    <div id="right-scroll">
+
+      <!-- OBJECT PROPERTIES TAB -->
+      <div class="tab-panel active" id="tab-props">
+        <div id="prop-empty" class="prop-hint">
+          Click an object on the map to edit its properties, or drag an asset from the library to place it.
+        </div>
+        <div id="prop-editor" style="display:none">
+          <div class="prop-section">
+            <div class="prop-section-title">IDENTITY</div>
+            <div class="field"><label>ID (readonly)</label><input id="p-id" readonly></div>
+            <div class="field">
+              <label>Type</label>
+              <select id="p-type">
+                <option value="deco">Deco (visual only)</option>
+                <option value="spell">Spell Pickup</option>
+                <option value="gold">Gold Pickup</option>
+                <option value="encounter">Encounter (Enemy)</option>
+                <option value="portal">Portal</option>
+                <option value="building">Building (decoration)</option>
+                <option value="guild">Guild Entry</option>
+              </select>
+            </div>
+            <div class="field"><label>Label / Display Name</label><input id="p-label" placeholder="e.g. ⚔ Orc Patrol"></div>
+          </div>
+
+          <div class="prop-section">
+            <div class="prop-section-title">VISUAL</div>
+            <div class="field-row">
+              <div class="field"><label>Width (px)</label><input id="p-w" type="number" min="16" max="512"></div>
+              <div class="field"><label>Height (px)</label><input id="p-h" type="number" min="16" max="512"></div>
+            </div>
+            <div class="field">
+              <label>Z-Layer (render order)</label>
+              <div class="z-row">
+                <button class="z-btn" id="p-z-dn">▼</button>
+                <div class="z-val" id="p-z-val">1</div>
+                <button class="z-btn" id="p-z-up">▲</button>
+              </div>
+              <div style="font-size:10px;color:var(--text2);margin-top:3px">0=ground · 1=objects · 2=chars · 3=above</div>
+            </div>
+          </div>
+
+          <div class="prop-section">
+            <div class="prop-section-title">TAGS</div>
+            <div class="field">
+              <label>Add tag (press Enter)</label>
+              <input id="p-tag-input" placeholder="e.g. enemy, boss, fire">
+            </div>
+            <div class="tags-wrap" id="p-tags"></div>
+          </div>
+
+          <!-- TYPE-SPECIFIC FIELDS -->
+          <div id="prop-encounter" class="prop-section" style="display:none">
+            <div class="prop-section-title">ENCOUNTER</div>
+            <div class="field">
+              <label>Orc Type</label>
+              <select id="p-orc">
+                <option value="orc1">Orc 1</option>
+                <option value="orc2">Orc 2</option>
+                <option value="orc3">Orc 3</option>
+              </select>
+            </div>
+            <div class="field"><label>Enemy Zone</label><input id="p-zone" placeholder="bog / shadow"></div>
+            <div class="field"><label>Enemy ID (tag)</label><input id="p-enemy-id" placeholder="e.g. orc_grunt"></div>
+            <div class="field"><label>Enemy Name (display)</label><input id="p-enemy-name" placeholder="e.g. Orc Grunt"></div>
+          </div>
+
+          <div id="prop-spell" class="prop-section" style="display:none">
+            <div class="prop-section-title">SPELL PICKUP</div>
+            <div class="field"><label>Spell ID</label><input id="p-spell-id" placeholder="e.g. ember_bolt"></div>
+            <div class="field-row">
+              <div class="field"><label>Spark Color</label><input id="p-spark" type="color" value="#a78bfa"></div>
+            </div>
+          </div>
+
+          <div id="prop-gold" class="prop-section" style="display:none">
+            <div class="prop-section-title">GOLD PICKUP</div>
+            <div class="field"><label>Gold Amount</label><input id="p-gold" type="number" min="1" max="9999" value="10"></div>
+          </div>
+
+          <div id="prop-portal" class="prop-section" style="display:none">
+            <div class="prop-section-title">PORTAL</div>
+            <div class="field"><label>Target Map ID</label><input id="p-target" placeholder="e.g. cursed"></div>
+            <div class="field-row">
+              <div class="field"><label>Spark Color</label><input id="p-portal-spark" type="color" value="#c084fc"></div>
+            </div>
+          </div>
+
+          <button class="btn-delete" id="p-delete">🗑 Delete Object</button>
+        </div>
+      </div>
+
+      <!-- LAYERS TAB -->
+      <div class="tab-panel" id="tab-layers">
+        <div class="prop-section">
+          <div class="prop-section-title">ADD TILE LAYER</div>
+          <div class="layer-add-row">
+            <select id="new-layer-ts" title="Tileset for new layer"></select>
+            <button class="layer-add-btn" id="btn-add-layer">+ Add</button>
+          </div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.5;margin-bottom:10px">
+            Layers render bottom-to-top. Click a layer to make it active for painting (🖌 tool).
+          </div>
+        </div>
+        <div class="prop-section">
+          <div class="prop-section-title">LAYERS (bottom → top)</div>
+          <div id="layer-list"></div>
+        </div>
+      </div>
+
+      <!-- MAP SETTINGS TAB -->
+      <div class="tab-panel" id="tab-map">
+        <div class="prop-section">
+          <div class="prop-section-title">MAP INFO</div>
+          <div class="field"><label>Map ID</label><input id="m-id" value="new_map"></div>
+          <div class="field"><label>Display Name</label><input id="m-name" value="New Map"></div>
+          <div class="field"><label>Zone (for battle bg)</label><input id="m-zone" value="bog"></div>
+        </div>
+        <div class="prop-section">
+          <div class="prop-section-title">DIMENSIONS</div>
+          <div class="field-row">
+            <div class="field"><label>Columns</label><input id="m-cols" type="number" min="10" max="120" value="40"></div>
+            <div class="field"><label>Rows</label><input id="m-rows" type="number" min="8" max="80" value="28"></div>
+          </div>
+          <div class="field"><label>Tile Size (px)</label><input id="m-tile" type="number" min="16" max="128" value="48"></div>
+          <button class="btn-action" id="m-resize">↻ Apply Dimensions</button>
+        </div>
+        <div class="prop-section">
+          <div class="prop-section-title">APPEARANCE</div>
+          <div class="field">
+            <label>Background Image (CSS tiled)</label>
+            <select id="m-ground">
+              <option value="">— None —</option>
+              <option value="Assets/Assets_Maps/PNG/Ground_rocks.png">Bog — Ground_rocks</option>
+              <option value="Assets/Assets_Maps2/PNG/Ground.png">Cursed — Ground</option>
+              <option value="Assets/Assets_Maps2/PNG/details.png">Cursed — Details</option>
+              <option value="Assets/Assets_Maps2/PNG/spots.png">Cursed — Spots</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>BG Color</label><input id="m-color" type="color" value="#111e0f"></div>
+            <div class="field"><label></label><input id="m-color-hex" placeholder="#111e0f" value="#111e0f"></div>
+          </div>
+        </div>
+        <div class="prop-section">
+          <div class="prop-section-title">HERO SPAWN ⭐</div>
+          <div class="field-row">
+            <div class="field"><label>Tile X</label><input id="m-spawn-x" type="number" min="0" value="20"></div>
+            <div class="field"><label>Tile Y</label><input id="m-spawn-y" type="number" min="0" value="14"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text2);margin-top:4px">
+            Or click the ⭐ tool then click on the map to place the spawn point.
+          </div>
+          <button class="btn-action" id="btn-place-spawn">⭐ Click to Set Spawn</button>
+        </div>
+        <div class="prop-section">
+          <div class="prop-section-title">NEXT MAP (PORTAL)</div>
+          <div class="field"><label>Next Map ID</label><input id="m-next" placeholder="e.g. cursed"></div>
+          <div class="field-row">
+            <div class="field"><label>Entry X</label><input id="m-entry-x" type="number" min="0" value="4"></div>
+            <div class="field"><label>Entry Y</label><input id="m-entry-y" type="number" min="0" value="14"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER STATUS BAR -->
+<div id="footer">
+  <span>Tile: <strong id="s-tile">(–, –)</strong></span>
+  <span>Objects: <strong id="s-count">0</strong></span>
+  <span>Layers: <strong id="s-layers">0</strong></span>
+  <span>Grid: <strong id="s-dims">40 × 28</strong></span>
+  <span>Zoom: <strong id="s-zoom">100%</strong></span>
+  <span style="margin-left:auto;color:var(--text2)">V=select · T=tile paint · E=erase · Del=delete · Ctrl+Z=undo · Scroll=zoom</span>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div id="modal-header">
+      <span id="modal-title">Export JSON</span>
+      <button id="modal-close">✕</button>
+    </div>
+    <div id="modal-body">
+      <textarea id="modal-json" spellcheck="false" readonly></textarea>
+    </div>
+    <div id="modal-footer">
+      <button class="hdr-btn" id="modal-copy">📋 Copy</button>
+      <button class="hdr-btn primary" id="modal-download">⬇ Download</button>
+      <button class="hdr-btn" id="modal-import-apply" style="display:none">✔ Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load tileset definitions (sets window.SA.TILESETS) -->
+<script src="js/data/tilesets.js"></script>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TILESET REFERENCE
+// ═══════════════════════════════════════════════════════════════════════════
+const TILESETS = (typeof SA !== 'undefined' && SA.TILESETS) ? SA.TILESETS : {};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ASSET LIBRARY DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const B1 = 'Assets/Assets_Maps/PNG/Objects_separately/';
+const B2 = 'Assets/Assets_Maps2/PNG/Objects_separetely/';
+const ORC = 'Assets/Assets_Enemy/PNG/';
+const GUILD_PATH = 'Assets/Assets_Guild/PNG/';
+const BLDG = 'Assets/Assets_Buildings/PNG/Assets/';
+
+const ASSET_GROUPS = [
+  {
+    key: 'bog_crystals', label: 'BOG — CRYSTALS',
+    assets: [
+      { key:'c11', label:'Crystal Blue 1', src:B1+'Crystal_shadow1_1.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#7dd3fc' },
+      { key:'c12', label:'Crystal Blue 2', src:B1+'Crystal_shadow1_2.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#7dd3fc' },
+      { key:'c21', label:'Crystal Red 1',  src:B1+'Crystal_shadow2_1.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#f97316' },
+      { key:'c22', label:'Crystal Red 2',  src:B1+'Crystal_shadow2_2.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#f97316' },
+      { key:'c31', label:'Crystal Grn 1',  src:B1+'Crystal_shadow3_1.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#4ade80' },
+      { key:'c32', label:'Crystal Grn 2',  src:B1+'Crystal_shadow3_2.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#4ade80' },
+    ]
+  },
+  {
+    key: 'bog_bones', label: 'BOG — BONES / GOLD',
+    assets: [
+      { key:'bn11', label:'Bones 1-1', src:B1+'Bones_shadow1_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'bn12', label:'Bones 1-2', src:B1+'Bones_shadow1_2.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'bn21', label:'Bones 2-1', src:B1+'Bones_shadow2_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'bn31', label:'Bones 3-1', src:B1+'Bones_shadow3_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'da11', label:'Dead Arm 1', src:B1+'Dead_arm_shadow1_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'da21', label:'Dead Arm 2', src:B1+'Dead_arm_shadow2_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+    ]
+  },
+  {
+    key: 'bog_graves', label: 'BOG — GRAVES',
+    assets: [
+      { key:'gr11', label:'Grave 1-1', src:B1+'Grave_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'gr12', label:'Grave 1-2', src:B1+'Grave_shadow1_2.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'gr21', label:'Grave 2-1', src:B1+'Grave_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'gr31', label:'Grave 3-1', src:B1+'Grave_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'sk1',  label:'Skull Pile 1', src:B1+'Pile_sculls_shadow1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'sk2',  label:'Skull Pile 2', src:B1+'Pile_sculls_shadow2.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'lch1', label:'Lich 1',     src:B1+'Lich_shadow1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'lch2', label:'Lich 2',     src:B1+'Lich_shadow2.png', dispW:64, dispH:64, defaultType:'deco' },
+    ]
+  },
+  {
+    key: 'bog_nature', label: 'BOG — NATURE',
+    assets: [
+      { key:'tr11', label:'Tree 1',      src:B1+'Tree_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco', defaultZ:2 },
+      { key:'tr21', label:'Tree 2',      src:B1+'Tree_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco', defaultZ:2 },
+      { key:'tr31', label:'Tree 3',      src:B1+'Tree_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco', defaultZ:2 },
+      { key:'dt11', label:'Dead Tree 1', src:B1+'Dead_tree_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco', defaultZ:2 },
+      { key:'dt31', label:'Dead Tree 3', src:B1+'Dead_tree_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco', defaultZ:2 },
+      { key:'bt11', label:'Brkn Tree 1', src:B1+'Broken_tree_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'bt21', label:'Brkn Tree 2', src:B1+'Broken_tree_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'pl11', label:'Plant 1',     src:B1+'Plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'pl21', label:'Plant 2',     src:B1+'Plant__shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'pl31', label:'Plant 3',     src:B1+'Plant_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'th11', label:'Thorn 1',     src:B1+'Thorn_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'th31', label:'Thorn 3',     src:B1+'Thorn_plant_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco' },
+    ]
+  },
+  {
+    key: 'bog_structures', label: 'BOG — RUINS / ROCKS',
+    assets: [
+      { key:'rk11', label:'Rock 1',   src:B1+'Rock_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'rk21', label:'Rock 2',   src:B1+'Rock_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'rk31', label:'Rock 3',   src:B1+'Rock_shadow3_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'ru11', label:'Ruin 1-1', src:B1+'Ruin_shadow1_1.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+      { key:'ru12', label:'Ruin 1-2', src:B1+'Ruin_shadow1_2.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+      { key:'ru21', label:'Ruin 2-1', src:B1+'Ruin_shadow2_1.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+      { key:'ru31', label:'Ruin 3-1', src:B1+'Ruin_shadow3_1.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+      { key:'sd1',  label:'Skull Door 1', src:B1+'Scull_door_shadow1.png', dispW:64, dispH:64, defaultType:'building', defaultZ:2 },
+    ]
+  },
+  {
+    key: 'cursed_plants', label: 'CURSED — PLANTS',
+    assets: [
+      { key:'ep11', label:'Eye Plant 1', src:B2+'Eye_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'ep21', label:'Eye Plant 2', src:B2+'Eye_plant_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'jp11', label:'Jaws Plant',  src:B2+'Jaws_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'me11', label:'Many Eyes',   src:B2+'Many_eyes_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'mf11', label:'Meat Flower 1', src:B2+'Meat_flower_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'mf21', label:'Meat Flower 2', src:B2+'Meat_flower_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'sp11', label:'Spike Plant 1', src:B2+'Spike_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'sp21', label:'Spike Plant 2', src:B2+'Spike_plant_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'tp11', label:'Tentacle 1',    src:B2+'Tentacle_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'tb11', label:'Tubular 1',     src:B2+'Tubular_plant_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'pu11', label:'Pustules 1',    src:B2+'Pustules_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+    ]
+  },
+  {
+    key: 'cursed_objects', label: 'CURSED — OBJECTS',
+    assets: [
+      { key:'vn11', label:'Veins 1-1', src:B2+'Veins_shadow1_1.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#c084fc' },
+      { key:'vn12', label:'Veins 1-2', src:B2+'Veins_shadow1_2.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#c084fc' },
+      { key:'vn14', label:'Veins 1-4', src:B2+'Veins_shadow1_4.png', dispW:64, dispH:64, defaultType:'portal', defaultZ:1 },
+      { key:'vn21', label:'Veins 2-1', src:B2+'Veins_shadow2_1.png', dispW:64, dispH:64, defaultType:'spell', defaultTags:['spell'], sparkColor:'#c084fc' },
+      { key:'ft11', label:'Fetus 1',   src:B2+'Fetus_shadow1_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'cb11', label:'CursedBone1', src:B2+'Bones_shadow1_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+      { key:'cb21', label:'CursedBone2', src:B2+'Bones_shadow2_1.png', dispW:64, dispH:64, defaultType:'gold', defaultTags:['gold'] },
+    ]
+  },
+  {
+    key: 'cursed_rocks', label: 'CURSED — ROCKS / RUINS',
+    assets: [
+      { key:'crk1', label:'C-Rock 1', src:B2+'Rock1_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'crk2', label:'C-Rock 2', src:B2+'Rock2_shadow2_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'crk3', label:'C-Rock 3', src:B2+'Rock3_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'cre1', label:'Eye Rock',  src:B2+'Rock_eyes_shadow1_1.png', dispW:64, dispH:64, defaultType:'deco' },
+      { key:'cru1', label:'C-Ruin 1', src:B2+'Ruins_shadow1_3.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+      { key:'cru2', label:'C-Ruin 2', src:B2+'Ruins_shadow2_1.png', dispW:64, dispH:64, defaultType:'building', defaultZ:1 },
+    ]
+  },
+  {
+    key: 'enemies', label: 'ENEMY MARKERS',
+    assets: [
+      { key:'orc1', label:'Orc 1', src:ORC+'Orc1/With_shadow/orc1_idle_with_shadow.png',
+        dispW:64, dispH:64, isSprite:true, frameW:64, frameH:64, frameRow:0, frameCol:0,
+        defaultType:'encounter', defaultTags:['enemy'], defaultOrc:'orc1', defaultZ:2 },
+      { key:'orc2', label:'Orc 2', src:ORC+'Orc2/With_shadow/orc2_idle_with_shadow.png',
+        dispW:64, dispH:64, isSprite:true, frameW:64, frameH:64, frameRow:0, frameCol:0,
+        defaultType:'encounter', defaultTags:['enemy'], defaultOrc:'orc2', defaultZ:2 },
+      { key:'orc3', label:'Orc 3', src:ORC+'Orc3/With_shadow/orc3_idle_with_shadow.png',
+        dispW:64, dispH:64, isSprite:true, frameW:64, frameH:64, frameRow:0, frameCol:0,
+        defaultType:'encounter', defaultTags:['enemy'], defaultOrc:'orc3', defaultZ:2 },
+    ]
+  },
+  {
+    key: 'buildings', label: 'BUILDINGS',
+    assets: [
+      { key:'guild_ext', label:'Guild Exterior', src:GUILD_PATH+'Exterior.png',
+        dispW:336, dispH:108, defaultType:'building', defaultZ:1 },
+      { key:'br1', label:'Brown Ruin 1', src:BLDG+'Brown_ruins1.png', dispW:80, dispH:80, defaultType:'building', defaultZ:1 },
+      { key:'br2', label:'Brown Ruin 2', src:BLDG+'Brown_ruins2.png', dispW:80, dispH:80, defaultType:'building', defaultZ:1 },
+      { key:'br3', label:'Brown Ruin 3', src:BLDG+'Brown_ruins3.png', dispW:80, dispH:80, defaultType:'building', defaultZ:1 },
+      { key:'bg1', label:'BlueGray Ruin 1', src:BLDG+'Blue-gray_ruins1.png', dispW:80, dispH:80, defaultType:'building', defaultZ:1 },
+      { key:'bg2', label:'BlueGray Ruin 2', src:BLDG+'Blue-gray_ruins2.png', dispW:80, dispH:80, defaultType:'building', defaultZ:1 },
+    ]
+  },
+  {
+    key: 'special', label: 'SPECIAL',
+    assets: [
+      { key:'portal_bog',    label:'Portal (Bog)',    src:B1+'Crystal_shadow3_1.png', dispW:64, dispH:64, defaultType:'portal', defaultTags:['portal'], sparkColor:'#c084fc' },
+      { key:'portal_cursed', label:'Portal (Cursed)', src:B2+'Veins_shadow1_4.png',   dispW:64, dispH:64, defaultType:'portal', defaultTags:['portal'], sparkColor:'#4ade80' },
+      { key:'guild_door',    label:'Guild Door',      src:'',                          dispW:48, dispH:48, defaultType:'guild',  defaultTags:['guild'] },
+    ]
+  },
+];
+
+// Build a flat lookup
+const ASSETS = {};
+for (const g of ASSET_GROUPS) for (const a of g.assets) ASSETS[a.key] = a;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+const TILESET_KEYS = Object.keys(TILESETS);
+
+let state = {
+  // Map config
+  mapCfg: {
+    id: 'new_map', name: 'New Map', zone: 'bog',
+    cols: 40, rows: 28, tileSize: 48,
+    groundImage: 'Assets/Assets_Maps/PNG/Ground_rocks.png',
+    bgColor: '#111e0f',
+    heroStart: { tx: 20, ty: 14 },
+    nextMap: '', nextMapEntry: { tx: 4, ty: 14 }
+  },
+
+  // Objects (placed map entities)
+  objects: [],
+  selectedId: null,
+  hoverTile: null,
+  showGrid: true,
+  zoom: 1,
+  tool: 'select',       // 'select' | 'tile' | 'erase' | 'spawn'
+  pendingAsset: null,
+  undoStack: [],
+  objCounter: 1,
+
+  // Tile layer system
+  tileLayers: [],           // [{id, name, tilesetId, visible, alpha, tiles:[...]}]
+  activeTileLayerIdx: 0,
+  selectedTile: -1,         // -1 = erase mode, >=0 = paint this tile index
+  activeTilesetId: TILESET_KEYS[0] || 'bog_ground',
+  brushSize: 1,             // 1, 2, or 3
+
+  // Animation
+  waterFrame: 0,            // 0-5, cycled by RAF loop
+
+  // Painting state
+  isPainting: false,        // left-button held in tile mode
+  undoSnappedForStroke: false, // have we snapped undo for the current stroke?
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════════════════════════════════════
+const canvas      = document.getElementById('map-canvas');
+const hoverCanvas = document.getElementById('hover-canvas');
+const ctx         = canvas.getContext('2d');
+const hctx        = hoverCanvas.getContext('2d');
+ctx.imageSmoothingEnabled  = false;
+hctx.imageSmoothingEnabled = false;
+
+function resizeCanvas() {
+  const { cols, rows, tileSize: T } = state.mapCfg;
+  // Drawing buffer stays at logical resolution; CSS display size applies zoom.
+  canvas.width  = hoverCanvas.width  = cols * T;
+  canvas.height = hoverCanvas.height = rows * T;
+  const displayW = cols * T * state.zoom;
+  const displayH = rows * T * state.zoom;
+  canvas.style.width      = hoverCanvas.style.width      = displayW + 'px';
+  canvas.style.height     = hoverCanvas.style.height     = displayH + 'px';
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.style.width    = displayW + 'px';
+  wrap.style.height   = displayH + 'px';
+  wrap.style.transform = '';
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMAGE CACHE
+// ═══════════════════════════════════════════════════════════════════════════
+const imgCache = new Map();
+function getImg(src) {
+  if (!src) return null;
+  if (imgCache.has(src)) return imgCache.get(src);
+  imgCache.set(src, null);
+  const img = new Image();
+  img.onload = () => {
+    imgCache.set(src, img);
+    render();
+    // Redraw picker if this was the active tileset loading
+    if (state.tool === 'tile') buildTilesetPicker();
+  };
+  img.onerror = () => { imgCache.set(src, 'error'); };
+  img.src = src;
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDERING — MAIN CANVAS
+// ═══════════════════════════════════════════════════════════════════════════
+function render() {
+  const { cols, rows, tileSize: T, bgColor, groundImage } = state.mapCfg;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 1. Background fill
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 2. Ground image tiled (CSS-style repeat)
+  if (groundImage) {
+    const img = getImg(groundImage);
+    if (img && img !== 'error') {
+      const pat = ctx.createPattern(img, 'repeat');
+      ctx.fillStyle = pat;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // 3. Tile layers (animated acid/water + detail tiles)
+  renderTileLayers();
+
+  // 4. Grid overlay
+  if (state.showGrid) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= cols; x++) {
+      ctx.beginPath(); ctx.moveTo(x * T, 0); ctx.lineTo(x * T, rows * T); ctx.stroke();
+    }
+    for (let y = 0; y <= rows; y++) {
+      ctx.beginPath(); ctx.moveTo(0, y * T); ctx.lineTo(cols * T, y * T); ctx.stroke();
+    }
+  }
+
+  // 5. Objects sorted by (zLayer * 1000 + ty)
+  const sorted = [...state.objects].sort((a,b) => (a.zLayer*1000+a.ty) - (b.zLayer*1000+b.ty));
+  for (const obj of sorted) {
+    drawObj(ctx, obj, obj.id === state.selectedId);
+  }
+
+  // 6. Hero spawn marker
+  const { tx: sx, ty: sy } = state.mapCfg.heroStart;
+  ctx.fillStyle = 'rgba(251,191,36,0.2)';
+  ctx.fillRect(sx*T, sy*T, T, T);
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = `${T*0.7}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⭐', sx*T + T/2, sy*T + T/2);
+}
+
+// Draw all tile layers (bottom → top), advancing water animation frame.
+function renderTileLayers() {
+  const { cols, rows, tileSize: T } = state.mapCfg;
+  for (const layer of state.tileLayers) {
+    if (!layer.visible) continue;
+    const ts = TILESETS[layer.tilesetId];
+    if (!ts) continue;
+    const img = getImg(ts.src);
+    if (!img || img === 'error') continue;
+    ctx.globalAlpha = layer.alpha ?? 1;
+    const frameOffsetY = ts.animated ? (state.waterFrame * ts.frameRows * ts.tileH) : 0;
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
+        const tileId = layer.tiles[ty * cols + tx];
+        if (tileId < 0) continue;
+        const srcX = (tileId % ts.cols) * ts.tileW;
+        const srcY = Math.floor(tileId / ts.cols) * ts.tileH + frameOffsetY;
+        ctx.drawImage(img, srcX, srcY, ts.tileW, ts.tileH, tx*T, ty*T, T, T);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawObj(ctx, obj, selected) {
+  const T  = state.mapCfg.tileSize;
+  const px = obj.tx * T;
+  const py = obj.ty * T;
+  const w  = obj.dispW || T;
+  const h  = obj.dispH || T;
+  const asset = ASSETS[obj.assetKey] || {};
+
+  if (!obj.src && obj.type === 'guild') {
+    ctx.strokeStyle = '#fbbf24';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px+1, py+1, T-2, T-2);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(251,191,36,0.15)';
+    ctx.fillRect(px+1, py+1, T-2, T-2);
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = `${T*0.55}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🚪', px + T/2, py + T/2);
+  } else {
+    const img = getImg(obj.src);
+    if (img && img !== 'error') {
+      if (asset.isSprite) {
+        const { frameW=64, frameH=64, frameRow=0, frameCol=0 } = asset;
+        ctx.drawImage(img, frameCol*frameW, frameRow*frameH, frameW, frameH, px, py, w, h);
+      } else {
+        ctx.drawImage(img, px, py, w, h);
+      }
+    } else if (img === null) {
+      ctx.fillStyle = 'rgba(100,80,200,0.25)';
+      ctx.fillRect(px, py, Math.min(w, T), Math.min(h, T));
+    }
+  }
+
+  if (selected) {
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(px - 1, py - 1, w + 2, h + 2);
+    ctx.setLineDash([]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDERING — HOVER CANVAS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderHover() {
+  const { cols, rows, tileSize: T } = state.mapCfg;
+  hctx.clearRect(0, 0, hoverCanvas.width, hoverCanvas.height);
+  if (!state.hoverTile) return;
+
+  const { tx, ty } = state.hoverTile;
+  if (tx < 0 || tx >= cols || ty < 0 || ty >= rows) return;
+
+  if (state.tool === 'tile') {
+    // Show brush footprint with tile ghost
+    const bs = state.brushSize;
+    const ts = TILESETS[state.activeTilesetId];
+
+    for (let dy = 0; dy < bs; dy++) {
+      for (let dx = 0; dx < bs; dx++) {
+        const ftx = tx + dx, fty = ty + dy;
+        if (ftx >= cols || fty >= rows) continue;
+
+        if (state.selectedTile >= 0 && ts) {
+          // Ghost the selected tile
+          const img = getImg(ts.src);
+          if (img && img !== 'error') {
+            const frameOffY = ts.animated ? (state.waterFrame * ts.frameRows * ts.tileH) : 0;
+            const srcX = (state.selectedTile % ts.cols) * ts.tileW;
+            const srcY = Math.floor(state.selectedTile / ts.cols) * ts.tileH + frameOffY;
+            hctx.globalAlpha = 0.55;
+            hctx.drawImage(img, srcX, srcY, ts.tileW, ts.tileH, ftx*T, fty*T, T, T);
+            hctx.globalAlpha = 1;
+          }
+          hctx.strokeStyle = '#a78bfa';
+        } else {
+          hctx.fillStyle = 'rgba(239,68,68,0.22)';
+          hctx.fillRect(ftx*T, fty*T, T, T);
+          hctx.strokeStyle = '#ef4444';
+        }
+        hctx.lineWidth = 1;
+        hctx.setLineDash([]);
+        hctx.strokeRect(ftx*T + 0.5, fty*T + 0.5, T - 1, T - 1);
+      }
+    }
+
+  } else if (state.pendingAsset) {
+    const asset = state.pendingAsset;
+    const img = getImg(asset.src);
+    if (img && img !== 'error') {
+      hctx.globalAlpha = 0.55;
+      if (asset.isSprite) {
+        const { frameW=64, frameH=64, frameRow=0, frameCol=0 } = asset;
+        hctx.drawImage(img, frameCol*frameW, frameRow*frameH, frameW, frameH, tx*T, ty*T, asset.dispW||T, asset.dispH||T);
+      } else {
+        hctx.drawImage(img, tx*T, ty*T, asset.dispW||T, asset.dispH||T);
+      }
+      hctx.globalAlpha = 1;
+    }
+    hctx.strokeStyle = '#a78bfa';
+    hctx.lineWidth = 1.5;
+    hctx.setLineDash([]);
+    hctx.strokeRect(tx*T, ty*T, T, T);
+
+  } else if (state.tool === 'erase') {
+    hctx.fillStyle = 'rgba(239,68,68,0.25)';
+    hctx.fillRect(tx*T, ty*T, T, T);
+    hctx.strokeStyle = '#ef4444';
+    hctx.lineWidth = 1.5;
+    hctx.setLineDash([]);
+    hctx.strokeRect(tx*T, ty*T, T, T);
+
+  } else if (state.tool === 'spawn') {
+    hctx.fillStyle = 'rgba(251,191,36,0.25)';
+    hctx.fillRect(tx*T, ty*T, T, T);
+    hctx.strokeStyle = '#fbbf24';
+    hctx.lineWidth = 1.5;
+    hctx.setLineDash([]);
+    hctx.strokeRect(tx*T, ty*T, T, T);
+
+  } else {
+    hctx.strokeStyle = 'rgba(167,139,250,0.4)';
+    hctx.lineWidth = 1;
+    hctx.setLineDash([]);
+    hctx.strokeRect(tx*T, ty*T, T, T);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANIMATION RAF LOOP — drives water/acid animation frames
+// ═══════════════════════════════════════════════════════════════════════════
+let lastWaterTick = 0;
+function animFrame(timestamp) {
+  const hasAnim = state.tileLayers.some(l => l.visible && TILESETS[l.tilesetId]?.animated);
+  if (hasAnim && timestamp - lastWaterTick >= 150) {
+    state.waterFrame = (state.waterFrame + 1) % 6;
+    lastWaterTick = timestamp;
+    render();
+  }
+  requestAnimationFrame(animFrame);
+}
+requestAnimationFrame(animFrame);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TILESET PICKER
+// ═══════════════════════════════════════════════════════════════════════════
+const PICKER_SCALE = 2; // 16px → 32px per tile
+
+function buildTilesetPicker() {
+  const ts = TILESETS[state.activeTilesetId];
+  const pickerCanvas = document.getElementById('picker-canvas');
+  if (!pickerCanvas) return;
+
+  const pickerRows = ts ? (ts.animated ? ts.frameRows : ts.rows) : 0;
+  if (!ts || !pickerRows) return;
+
+  pickerCanvas.width  = ts.cols * ts.tileW * PICKER_SCALE;
+  pickerCanvas.height = pickerRows * ts.tileH * PICKER_SCALE;
+
+  const pCtx = pickerCanvas.getContext('2d');
+  pCtx.imageSmoothingEnabled = false;
+
+  const img = getImg(ts.src);
+  if (img && img !== 'error') {
+    // Draw frame 0 only (top portion of animated tilesets)
+    pCtx.drawImage(
+      img,
+      0, 0, ts.cols * ts.tileW, pickerRows * ts.tileH,
+      0, 0, pickerCanvas.width,  pickerCanvas.height
+    );
+    drawPickerSelection(pCtx);
+  } else {
+    pCtx.fillStyle = '#0d0b14';
+    pCtx.fillRect(0, 0, pickerCanvas.width, pickerCanvas.height);
+    if (img === null) {
+      pCtx.fillStyle = '#64748b';
+      pCtx.font = '12px monospace';
+      pCtx.fillText('Loading…', 8, 20);
+    } else {
+      pCtx.fillStyle = '#ef4444';
+      pCtx.font = '11px monospace';
+      pCtx.fillText('Image error', 8, 20);
+    }
+  }
+}
+
+function drawPickerSelection(pCtx) {
+  if (state.selectedTile < 0) return;
+  const ts = TILESETS[state.activeTilesetId];
+  if (!ts) return;
+  const col = state.selectedTile % ts.cols;
+  const row = Math.floor(state.selectedTile / ts.cols);
+  const px = col * ts.tileW * PICKER_SCALE;
+  const py = row * ts.tileH * PICKER_SCALE;
+  pCtx.strokeStyle = '#fbbf24';
+  pCtx.lineWidth = 2;
+  pCtx.strokeRect(px + 1, py + 1, ts.tileW * PICKER_SCALE - 2, ts.tileH * PICKER_SCALE - 2);
+}
+
+function initPickerEvents() {
+  const pickerCanvas = document.getElementById('picker-canvas');
+  if (!pickerCanvas) return;
+
+  pickerCanvas.addEventListener('click', e => {
+    const ts = TILESETS[state.activeTilesetId];
+    if (!ts) return;
+    const rect = pickerCanvas.getBoundingClientRect();
+    // Scale from CSS display size back to canvas coords
+    const scaleX = pickerCanvas.width  / rect.width;
+    const scaleY = pickerCanvas.height / rect.height;
+    const cx = (e.clientX - rect.left) * scaleX;
+    const cy = (e.clientY - rect.top)  * scaleY;
+    const col = Math.floor(cx / (ts.tileW * PICKER_SCALE));
+    const row = Math.floor(cy / (ts.tileH * PICKER_SCALE));
+    const pickerRows = ts.animated ? ts.frameRows : ts.rows;
+    if (col < 0 || col >= ts.cols || row < 0 || row >= pickerRows) return;
+    state.selectedTile = row * ts.cols + col;
+    buildTilesetPicker();
+    document.getElementById('picker-status').textContent =
+      `Tile [${col}, ${row}]  idx:${state.selectedTile}  — ${ts.label}`;
+  });
+
+  pickerCanvas.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    state.selectedTile = -1;
+    buildTilesetPicker();
+    document.getElementById('picker-status').textContent = 'No tile selected — click to paint, right-click = erase';
+  });
+}
+
+function buildTilesetOptions(selectEl, selectedId) {
+  selectEl.innerHTML = '';
+  for (const [id, ts] of Object.entries(TILESETS)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = ts.label || id;
+    opt.selected = id === selectedId;
+    selectEl.appendChild(opt);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TILE PAINTING
+// ═══════════════════════════════════════════════════════════════════════════
+function paintTile(tx, ty) {
+  if (!state.tileLayers.length) return;
+  const layer = state.tileLayers[state.activeTileLayerIdx];
+  if (!layer) return;
+  const { cols, rows } = state.mapCfg;
+  const bs = state.brushSize;
+  let changed = false;
+  for (let dy = 0; dy < bs; dy++) {
+    for (let dx = 0; dx < bs; dx++) {
+      const ftx = tx + dx, fty = ty + dy;
+      if (ftx >= cols || fty >= rows) continue;
+      layer.tiles[fty * cols + ftx] = state.selectedTile;
+      changed = true;
+    }
+  }
+  if (changed) render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LAYER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+function addLayer(tilesetId) {
+  const { cols, rows } = state.mapCfg;
+  const ts = TILESETS[tilesetId];
+  const layer = {
+    id:        'layer_' + Date.now(),
+    name:      ts ? ts.label : tilesetId,
+    tilesetId,
+    visible:   true,
+    alpha:     1,
+    tiles:     new Array(cols * rows).fill(-1),
+  };
+  state.tileLayers.push(layer);
+  state.activeTileLayerIdx = state.tileLayers.length - 1;
+  updateLayerCount();
+  buildLayerPanel();
+  render();
+}
+
+function removeLayer(idx) {
+  state.tileLayers.splice(idx, 1);
+  state.activeTileLayerIdx = Math.min(
+    state.activeTileLayerIdx,
+    Math.max(0, state.tileLayers.length - 1)
+  );
+  updateLayerCount();
+  buildLayerPanel();
+  render();
+}
+
+function buildLayerPanel() {
+  const list = document.getElementById('layer-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  if (!state.tileLayers.length) {
+    list.innerHTML = '<div class="layer-empty">No layers yet — add one above.</div>';
+    return;
+  }
+
+  state.tileLayers.forEach((layer, idx) => {
+    const item = document.createElement('div');
+    item.className = 'layer-item' + (idx === state.activeTileLayerIdx ? ' active' : '');
+
+    const visIcon = layer.visible ? '👁' : '🚫';
+    item.innerHTML = `
+      <span class="lv" title="Toggle visibility">${visIcon}</span>
+      <span class="lname" title="${layer.name}">${layer.name}</span>
+      <input type="range" min="0" max="1" step="0.05" value="${layer.alpha}" title="Opacity ${Math.round(layer.alpha*100)}%">
+      <span class="ldel" title="Delete layer">🗑</span>
+    `;
+
+    // Click body → make active
+    item.addEventListener('click', e => {
+      if (e.target.classList.contains('lv') ||
+          e.target.classList.contains('ldel') ||
+          e.target.tagName === 'INPUT') return;
+      state.activeTileLayerIdx = idx;
+      buildLayerPanel();
+    });
+
+    // Visibility toggle
+    item.querySelector('.lv').addEventListener('click', e => {
+      e.stopPropagation();
+      layer.visible = !layer.visible;
+      buildLayerPanel();
+      render();
+    });
+
+    // Alpha slider
+    item.querySelector('input[type=range]').addEventListener('input', e => {
+      e.stopPropagation();
+      layer.alpha = parseFloat(e.target.value);
+      render();
+    });
+
+    // Delete layer
+    item.querySelector('.ldel').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm(`Delete layer "${layer.name}"?`)) return;
+      pushUndo();
+      removeLayer(idx);
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function resizeTileLayers(newCols, newRows, oldCols, oldRows) {
+  for (const layer of state.tileLayers) {
+    const newTiles = new Array(newCols * newRows).fill(-1);
+    const minR = Math.min(oldRows, newRows);
+    const minC = Math.min(oldCols, newCols);
+    for (let ty = 0; ty < minR; ty++) {
+      for (let tx = 0; tx < minC; tx++) {
+        newTiles[ty * newCols + tx] = layer.tiles[ty * oldCols + tx] ?? -1;
+      }
+    }
+    layer.tiles = newTiles;
+  }
+}
+
+function updateLayerCount() {
+  const el = document.getElementById('s-layers');
+  if (el) el.textContent = state.tileLayers.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OBJECT MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+function generateId(type) {
+  return `${type}_${state.objCounter++}`;
+}
+
+function placeObject(asset, tx, ty) {
+  pushUndo();
+  const type = asset.defaultType || 'deco';
+  const obj = {
+    id:       generateId(type),
+    assetKey: asset.key,
+    src:      asset.src || '',
+    tx, ty,
+    dispW:    asset.dispW || state.mapCfg.tileSize,
+    dispH:    asset.dispH || state.mapCfg.tileSize,
+    type,
+    label:    asset.label || '',
+    zLayer:   asset.defaultZ ?? (type === 'encounter' ? 2 : type === 'building' ? 1 : 0),
+    tags:     [...(asset.defaultTags || [])],
+    orcType:     asset.defaultOrc || 'orc1',
+    enemyZone:   'bog',
+    enemyId:     '',
+    enemyName:   '',
+    spellId:     '',
+    sparkColor:  asset.sparkColor || '#a78bfa',
+    goldAmount:  10,
+    targetMap:   '',
+    portalSpark: '#c084fc',
+    notes:       '',
+  };
+  state.objects.push(obj);
+  state.selectedId = obj.id;
+  updateCountStatus();
+  updateProperties();
+  render();
+}
+
+function findTopmostAt(tx, ty) {
+  const T = state.mapCfg.tileSize;
+  const sorted = [...state.objects].sort((a,b) => (b.zLayer*1000+b.ty) - (a.zLayer*1000+a.ty));
+  for (const obj of sorted) {
+    const tileW = Math.ceil((obj.dispW || T) / T);
+    const tileH = Math.ceil((obj.dispH || T) / T);
+    if (tx >= obj.tx && tx < obj.tx + tileW && ty >= obj.ty && ty < obj.ty + tileH) return obj;
+  }
+  return null;
+}
+
+function deleteSelected() {
+  if (!state.selectedId) return;
+  pushUndo();
+  state.objects = state.objects.filter(o => o.id !== state.selectedId);
+  state.selectedId = null;
+  updateCountStatus();
+  updateProperties();
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNDO
+// ═══════════════════════════════════════════════════════════════════════════
+function pushUndo() {
+  state.undoStack.push({
+    objects:    JSON.stringify(state.objects),
+    heroStart:  { ...state.mapCfg.heroStart },
+    tileLayers: state.tileLayers.map(l => ({ ...l, tiles: l.tiles.slice() })),
+  });
+  if (state.undoStack.length > 50) state.undoStack.shift();
+  state.undoSnappedForStroke = true;
+}
+
+function undo() {
+  if (!state.undoStack.length) return;
+  const snap = state.undoStack.pop();
+  state.objects = JSON.parse(snap.objects);
+  state.mapCfg.heroStart = snap.heroStart;
+  state.tileLayers = snap.tileLayers.map(l => ({ ...l, tiles: l.tiles.slice() }));
+  state.activeTileLayerIdx = Math.min(
+    state.activeTileLayerIdx,
+    Math.max(0, state.tileLayers.length - 1)
+  );
+  state.selectedId = null;
+  updateCountStatus();
+  updateLayerCount();
+  updateProperties();
+  syncMapSettingsUI();
+  buildLayerPanel();
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CANVAS EVENTS
+// ═══════════════════════════════════════════════════════════════════════════
+let drag = null; // { objId, offTx, offTy, moved }
+
+function canvasToTile(e) {
+  const rect = canvas.getBoundingClientRect();
+  const T = state.mapCfg.tileSize;
+  const tx = Math.floor((e.clientX - rect.left) / T / state.zoom);
+  const ty = Math.floor((e.clientY - rect.top)  / T / state.zoom);
+  return {
+    tx: Math.max(0, Math.min(tx, state.mapCfg.cols - 1)),
+    ty: Math.max(0, Math.min(ty, state.mapCfg.rows - 1))
+  };
+}
+
+hoverCanvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const { tx, ty } = canvasToTile(e);
+
+  // ── Tile paint mode ──
+  if (state.tool === 'tile') {
+    if (!state.tileLayers.length) {
+      alert('Add a tile layer first (Layers tab on the right).');
+      return;
+    }
+    state.isPainting = true;
+    state.undoSnappedForStroke = false;
+    pushUndo();
+    paintTile(tx, ty);
+    return;
+  }
+
+  // ── Spawn placement mode ──
+  if (state.tool === 'spawn') {
+    pushUndo();
+    state.mapCfg.heroStart = { tx, ty };
+    syncSpawnUI();
+    render();
+    return;
+  }
+
+  // ── Place pending asset ──
+  if (state.pendingAsset) {
+    placeObject(state.pendingAsset, tx, ty);
+    state.pendingAsset = null;
+    updateLibraryHighlight();
+    return;
+  }
+
+  // ── Erase object mode ──
+  if (state.tool === 'erase') {
+    const hit = findTopmostAt(tx, ty);
+    if (hit) {
+      pushUndo();
+      state.objects = state.objects.filter(o => o.id !== hit.id);
+      state.selectedId = null;
+      updateCountStatus();
+      updateProperties();
+      render();
+    }
+    return;
+  }
+
+  // ── Select / drag ──
+  const hit = findTopmostAt(tx, ty);
+  if (hit) {
+    state.selectedId = hit.id;
+    drag = { objId: hit.id, offTx: tx - hit.tx, offTy: ty - hit.ty, moved: false };
+    updateProperties();
+    render();
+  } else {
+    state.selectedId = null;
+    updateProperties();
+    render();
+  }
+});
+
+// Right-click on canvas in tile mode = erase tile at cursor
+hoverCanvas.addEventListener('contextmenu', e => {
+  if (state.tool !== 'tile') return;
+  e.preventDefault();
+  if (!state.tileLayers.length) return;
+  const { tx, ty } = canvasToTile(e);
+  const saved = state.selectedTile;
+  state.selectedTile = -1;
+  pushUndo();
+  paintTile(tx, ty);
+  state.selectedTile = saved;
+});
+
+hoverCanvas.addEventListener('mousemove', e => {
+  const { tx, ty } = canvasToTile(e);
+  state.hoverTile = { tx, ty };
+  document.getElementById('s-tile').textContent = `(${tx}, ${ty})`;
+
+  // Tile painting drag
+  if (state.tool === 'tile' && state.isPainting) {
+    paintTile(tx, ty);
+    renderHover();
+    return;
+  }
+
+  // Object drag
+  if (drag) {
+    const obj = state.objects.find(o => o.id === drag.objId);
+    if (obj) {
+      const newTx = Math.max(0, tx - drag.offTx);
+      const newTy = Math.max(0, ty - drag.offTy);
+      if (newTx !== obj.tx || newTy !== obj.ty) {
+        if (!drag.moved) pushUndo();
+        drag.moved = true;
+        obj.tx = newTx; obj.ty = newTy;
+        render();
+      }
+    }
+  }
+
+  renderHover();
+});
+
+hoverCanvas.addEventListener('mouseup', () => {
+  drag = null;
+  if (state.tool === 'tile') {
+    state.isPainting = false;
+    state.undoSnappedForStroke = false;
+  }
+});
+
+hoverCanvas.addEventListener('mouseleave', () => {
+  drag = null;
+  state.hoverTile = null;
+  state.isPainting = false;
+  renderHover();
+});
+
+// Drag-and-drop from asset panel
+hoverCanvas.addEventListener('dragover', e => {
+  e.preventDefault();
+  const { tx, ty } = canvasToTile(e);
+  state.hoverTile = { tx, ty };
+  renderHover();
+});
+hoverCanvas.addEventListener('drop', e => {
+  e.preventDefault();
+  const key = e.dataTransfer.getData('assetKey');
+  const asset = ASSETS[key];
+  if (!asset) return;
+  const { tx, ty } = canvasToTile(e);
+  placeObject(asset, tx, ty);
+  state.hoverTile = null;
+  renderHover();
+});
+
+// Zoom with Ctrl + scroll
+document.getElementById('map-container').addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  state.zoom = Math.max(0.25, Math.min(4, state.zoom * factor));
+  const { cols, rows, tileSize: T } = state.mapCfg;
+  const displayW = cols * T * state.zoom;
+  const displayH = rows * T * state.zoom;
+  canvas.style.width      = hoverCanvas.style.width      = displayW + 'px';
+  canvas.style.height     = hoverCanvas.style.height     = displayH + 'px';
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.style.width    = displayW + 'px';
+  wrap.style.height   = displayH + 'px';
+  wrap.style.transform = '';
+  document.getElementById('s-zoom').textContent = Math.round(state.zoom * 100) + '%';
+}, { passive: false });
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+  if (e.key === 'Escape') {
+    state.pendingAsset = null;
+    updateLibraryHighlight();
+    if (state.tool === 'spawn') setTool('select');
+  }
+  if (e.key.toLowerCase() === 'v') setTool('select');
+  if (e.key.toLowerCase() === 't') setTool('tile');
+  if (e.key.toLowerCase() === 'e') setTool('erase');
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROPERTIES PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+function updateProperties() {
+  const obj = state.objects.find(o => o.id === state.selectedId);
+  document.getElementById('prop-empty').style.display  = obj ? 'none' : '';
+  document.getElementById('prop-editor').style.display = obj ? ''     : 'none';
+  if (!obj) return;
+
+  document.getElementById('p-id').value    = obj.id;
+  document.getElementById('p-type').value  = obj.type;
+  document.getElementById('p-label').value = obj.label || '';
+  document.getElementById('p-w').value     = obj.dispW || 64;
+  document.getElementById('p-h').value     = obj.dispH || 64;
+  document.getElementById('p-z-val').textContent = obj.zLayer ?? 1;
+
+  renderTagChips(obj);
+
+  const allSections = ['prop-encounter','prop-spell','prop-gold','prop-portal'];
+  allSections.forEach(id => document.getElementById(id).style.display = 'none');
+  if (obj.type === 'encounter') {
+    document.getElementById('prop-encounter').style.display = '';
+    document.getElementById('p-orc').value        = obj.orcType || 'orc1';
+    document.getElementById('p-zone').value       = obj.enemyZone || 'bog';
+    document.getElementById('p-enemy-id').value   = obj.enemyId || '';
+    document.getElementById('p-enemy-name').value = obj.enemyName || '';
+  } else if (obj.type === 'spell') {
+    document.getElementById('prop-spell').style.display = '';
+    document.getElementById('p-spell-id').value = obj.spellId || '';
+    document.getElementById('p-spark').value    = obj.sparkColor || '#a78bfa';
+  } else if (obj.type === 'gold') {
+    document.getElementById('prop-gold').style.display = '';
+    document.getElementById('p-gold').value = obj.goldAmount ?? 10;
+  } else if (obj.type === 'portal') {
+    document.getElementById('prop-portal').style.display = '';
+    document.getElementById('p-target').value       = obj.targetMap || '';
+    document.getElementById('p-portal-spark').value = obj.portalSpark || '#c084fc';
+  }
+}
+
+function renderTagChips(obj) {
+  const wrap = document.getElementById('p-tags');
+  wrap.innerHTML = '';
+  (obj.tags || []).forEach((tag, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.textContent = '× ' + tag;
+    const colors = { enemy:'#ef4444', spell:'#a78bfa', gold:'#fbbf24', portal:'#4ade80', boss:'#f97316' };
+    const color = colors[tag.split(':')[0]] || '#94a3b8';
+    chip.style.borderColor = color;
+    chip.style.color = color;
+    chip.addEventListener('click', () => {
+      pushUndo();
+      obj.tags.splice(i, 1);
+      renderTagChips(obj);
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+function bindProps() {
+  const getObj = () => state.objects.find(o => o.id === state.selectedId);
+
+  const upd = (id, field, transform) => {
+    document.getElementById(id).addEventListener('input', e => {
+      const obj = getObj(); if (!obj) return;
+      obj[field] = transform ? transform(e.target.value) : e.target.value;
+      render();
+    });
+  };
+
+  upd('p-type', 'type', null);
+  document.getElementById('p-type').addEventListener('change', () => { updateProperties(); render(); });
+  upd('p-label', 'label', null);
+  upd('p-w', 'dispW', Number);
+  upd('p-h', 'dispH', Number);
+  upd('p-orc',        'orcType',    null);
+  upd('p-zone',       'enemyZone',  null);
+  upd('p-enemy-id',   'enemyId',    null);
+  upd('p-enemy-name', 'enemyName',  null);
+  upd('p-spell-id',   'spellId',    null);
+  upd('p-spark',      'sparkColor', null);
+  upd('p-gold',       'goldAmount', Number);
+  upd('p-target',     'targetMap',  null);
+  upd('p-portal-spark','portalSpark',null);
+
+  document.getElementById('p-z-up').addEventListener('click', () => {
+    const obj = getObj(); if (!obj) return;
+    obj.zLayer = Math.min(10, (obj.zLayer ?? 1) + 1);
+    document.getElementById('p-z-val').textContent = obj.zLayer;
+    render();
+  });
+  document.getElementById('p-z-dn').addEventListener('click', () => {
+    const obj = getObj(); if (!obj) return;
+    obj.zLayer = Math.max(0, (obj.zLayer ?? 1) - 1);
+    document.getElementById('p-z-val').textContent = obj.zLayer;
+    render();
+  });
+
+  document.getElementById('p-tag-input').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const obj = getObj(); if (!obj) return;
+    const tag = e.target.value.trim();
+    if (tag && !obj.tags.includes(tag)) { pushUndo(); obj.tags.push(tag); }
+    e.target.value = '';
+    renderTagChips(obj);
+  });
+
+  document.getElementById('p-delete').addEventListener('click', deleteSelected);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAP SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+function syncMapSettingsUI() {
+  const m = state.mapCfg;
+  document.getElementById('m-id').value    = m.id;
+  document.getElementById('m-name').value  = m.name;
+  document.getElementById('m-zone').value  = m.zone || 'bog';
+  document.getElementById('m-cols').value  = m.cols;
+  document.getElementById('m-rows').value  = m.rows;
+  document.getElementById('m-tile').value  = m.tileSize;
+  document.getElementById('m-ground').value = m.groundImage || '';
+  document.getElementById('m-color').value = m.bgColor;
+  document.getElementById('m-color-hex').value = m.bgColor;
+  document.getElementById('m-next').value  = m.nextMap || '';
+  syncSpawnUI();
+}
+function syncSpawnUI() {
+  document.getElementById('m-spawn-x').value = state.mapCfg.heroStart.tx;
+  document.getElementById('m-spawn-y').value = state.mapCfg.heroStart.ty;
+  document.getElementById('s-dims').textContent = `${state.mapCfg.cols} × ${state.mapCfg.rows}`;
+}
+
+function bindMapSettings() {
+  const m = state.mapCfg;
+  const upd = (id, field) => document.getElementById(id).addEventListener('input', e => {
+    m[field] = e.target.value; render();
+  });
+  upd('m-id', 'id'); upd('m-name', 'name'); upd('m-zone', 'zone');
+
+  document.getElementById('m-ground').addEventListener('change', e => {
+    m.groundImage = e.target.value;
+    imgCache.delete(m.groundImage);
+    render();
+  });
+  document.getElementById('m-color').addEventListener('input', e => {
+    m.bgColor = e.target.value;
+    document.getElementById('m-color-hex').value = e.target.value;
+    render();
+  });
+  document.getElementById('m-color-hex').addEventListener('input', e => {
+    if (/^#[0-9a-f]{6}$/i.test(e.target.value)) {
+      m.bgColor = e.target.value;
+      document.getElementById('m-color').value = e.target.value;
+      render();
+    }
+  });
+  document.getElementById('m-resize').addEventListener('click', () => {
+    const oldCols = m.cols, oldRows = m.rows;
+    const newCols = parseInt(document.getElementById('m-cols').value) || 40;
+    const newRows = parseInt(document.getElementById('m-rows').value) || 28;
+    const newTile = parseInt(document.getElementById('m-tile').value) || 48;
+    if (state.tileLayers.length && (newCols !== oldCols || newRows !== oldRows)) {
+      resizeTileLayers(newCols, newRows, oldCols, oldRows);
+    }
+    m.cols = newCols;
+    m.rows = newRows;
+    m.tileSize = newTile;
+    resizeCanvas();
+    syncSpawnUI();
+  });
+  document.getElementById('m-spawn-x').addEventListener('input', e => { m.heroStart.tx = parseInt(e.target.value)||0; render(); });
+  document.getElementById('m-spawn-y').addEventListener('input', e => { m.heroStart.ty = parseInt(e.target.value)||0; render(); });
+  document.getElementById('m-next').addEventListener('input', e => { m.nextMap = e.target.value; });
+  document.getElementById('btn-place-spawn').addEventListener('click', () => setTool('spawn'));
+}
+
+function updateCountStatus() {
+  document.getElementById('s-count').textContent = state.objects.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOOL SELECTION
+// ═══════════════════════════════════════════════════════════════════════════
+function setTool(t) {
+  state.tool = t;
+  state.pendingAsset = null;
+  state.isPainting   = false;
+  updateLibraryHighlight();
+
+  const inTileMode = (t === 'tile');
+  document.getElementById('lib-panel').style.display   = inTileMode ? 'none' : 'flex';
+  document.getElementById('tile-panel').style.display  = inTileMode ? 'flex' : 'none';
+  document.getElementById('brush-group').style.display = inTileMode ? 'flex' : 'none';
+
+  document.getElementById('tool-select').classList.toggle('active', t === 'select');
+  document.getElementById('tool-tile').classList.toggle('active',   t === 'tile');
+  document.getElementById('tool-erase').classList.toggle('active',  t === 'erase');
+
+  hoverCanvas.style.cursor =
+    t === 'erase' ? 'not-allowed' :
+    t === 'spawn' ? 'cell' :
+    'crosshair';
+
+  if (inTileMode) buildTilesetPicker();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ASSET LIBRARY
+// ═══════════════════════════════════════════════════════════════════════════
+function buildLibrary() {
+  const scroll = document.getElementById('lib-scroll');
+  scroll.innerHTML = '';
+
+  for (const group of ASSET_GROUPS) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'lib-group';
+    groupEl.dataset.key = group.key;
+
+    const title = document.createElement('div');
+    title.className = 'lib-group-title';
+    title.textContent = group.label;
+    title.addEventListener('click', () => groupEl.classList.toggle('collapsed'));
+    groupEl.appendChild(title);
+
+    const items = document.createElement('div');
+    items.className = 'lib-group-items';
+
+    for (const asset of group.assets) {
+      const item = document.createElement('div');
+      item.className = 'asset-item';
+      item.dataset.key = asset.key;
+      item.title = asset.label;
+      item.draggable = true;
+
+      if (asset.isSprite && asset.src) {
+        const sprite = document.createElement('div');
+        sprite.className = 'asset-sprite';
+        sprite.style.backgroundImage = `url('${asset.src}')`;
+        item.appendChild(sprite);
+      } else if (asset.src) {
+        const img = document.createElement('img');
+        img.src = asset.src;
+        img.draggable = false;
+        item.appendChild(img);
+      } else {
+        item.innerHTML = '<div style="font-size:24px;text-align:center">🚪</div>';
+      }
+
+      const lbl = document.createElement('div');
+      lbl.className = 'asset-label';
+      lbl.textContent = asset.label;
+      item.appendChild(lbl);
+
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('assetKey', asset.key);
+        state.pendingAsset = asset;
+        updateLibraryHighlight();
+      });
+
+      item.addEventListener('click', () => {
+        if (state.pendingAsset?.key === asset.key) {
+          state.pendingAsset = null;
+        } else {
+          state.pendingAsset = asset;
+          setTool('select');
+        }
+        updateLibraryHighlight();
+      });
+
+      items.appendChild(item);
+    }
+    groupEl.appendChild(items);
+    scroll.appendChild(groupEl);
+  }
+}
+
+function updateLibraryHighlight() {
+  document.querySelectorAll('.asset-item').forEach(el => {
+    el.classList.toggle('selected', state.pendingAsset?.key === el.dataset.key);
+  });
+}
+
+document.getElementById('lib-filter').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.asset-item').forEach(el => {
+    el.style.display = (!q || el.title.toLowerCase().includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('.lib-group').forEach(g => {
+    const visible = [...g.querySelectorAll('.asset-item')].some(el => el.style.display !== 'none');
+    g.style.display = visible ? '' : 'none';
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════════════
+document.querySelectorAll('.right-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.right-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════════════════════
+function buildExportJSON() {
+  const m = state.mapCfg;
+  const sorted = [...state.objects].sort((a,b) => (a.zLayer*1000+a.ty) - (b.zLayer*1000+b.ty));
+
+  const objects = sorted.map(obj => {
+    const base = {
+      id:    obj.id,
+      type:  obj.type,
+      tx:    obj.tx,
+      ty:    obj.ty,
+      image: obj.src || '',
+      label: obj.label,
+      zLayer: obj.zLayer ?? 0,
+      tags:  obj.tags || [],
+    };
+    if (obj.dispW === obj.dispH) base.imageSize = obj.dispW;
+    else { base.imageW = obj.dispW; base.imageH = obj.dispH; }
+
+    if (obj.type === 'encounter') {
+      base.orcType   = obj.orcType;
+      base.enemyZone = obj.enemyZone;
+      if (obj.enemyId)   base.enemyId   = obj.enemyId;
+      if (obj.enemyName) base.enemyName = obj.enemyName;
+    } else if (obj.type === 'spell') {
+      base.spellId    = obj.spellId;
+      base.sparkColor = obj.sparkColor;
+    } else if (obj.type === 'gold') {
+      base.gold = obj.goldAmount;
+    } else if (obj.type === 'portal') {
+      base.targetMap  = obj.targetMap;
+      base.sparkColor = obj.portalSpark;
+    }
+    return base;
+  });
+
+  const tileLayers = state.tileLayers.map(l => ({
+    id:        l.id,
+    name:      l.name,
+    tilesetId: l.tilesetId,
+    visible:   l.visible,
+    alpha:     l.alpha,
+    tiles:     l.tiles,
+  }));
+
+  const out = {
+    id:          m.id,
+    name:        m.name,
+    zone:        m.zone,
+    cols:        m.cols,
+    rows:        m.rows,
+    tileSize:    m.tileSize,
+    groundImage: m.groundImage,
+    bgColor:     m.bgColor,
+    heroStart:   m.heroStart,
+    nextMap:     m.nextMap || undefined,
+    nextMapEntry: m.nextMap ? m.nextMapEntry : undefined,
+    tileLayers,
+    objects,
+  };
+  return JSON.stringify(out, null, 2);
+}
+
+function showModal(title, json, isImport) {
+  document.getElementById('modal-title').textContent   = title;
+  document.getElementById('modal-json').value          = json;
+  document.getElementById('modal-json').readOnly       = !isImport;
+  document.getElementById('modal-import-apply').style.display = isImport ? '' : 'none';
+  document.getElementById('modal-download').style.display     = isImport ? 'none' : '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  showModal('Export JSON — copy or download', buildExportJSON(), false);
+});
+document.getElementById('btn-import').addEventListener('click', () => {
+  showModal('Import JSON — paste and apply', '{}', true);
+  document.getElementById('modal-json').readOnly = false;
+});
+
+document.getElementById('modal-close').addEventListener('click', () =>
+  document.getElementById('modal-overlay').classList.remove('open'));
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+document.getElementById('modal-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('modal-json').value)
+    .then(() => {
+      document.getElementById('modal-copy').textContent = '✔ Copied!';
+      setTimeout(() => { document.getElementById('modal-copy').textContent = '📋 Copy'; }, 1800);
+    });
+});
+document.getElementById('modal-download').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('modal-json').value], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.mapCfg.id || 'map') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById('modal-import-apply').addEventListener('click', () => {
+  try {
+    const data = JSON.parse(document.getElementById('modal-json').value);
+    loadFromJSON(data);
+    document.getElementById('modal-overlay').classList.remove('open');
+  } catch(err) {
+    alert('Invalid JSON: ' + err.message);
+  }
+});
+
+function loadFromJSON(data) {
+  pushUndo();
+  const cols = data.cols || 40;
+  const rows = data.rows || 28;
+  state.mapCfg = {
+    id:          data.id          || 'new_map',
+    name:        data.name        || 'New Map',
+    zone:        data.zone        || 'bog',
+    cols,
+    rows,
+    tileSize:    data.tileSize    || 48,
+    groundImage: data.groundImage || '',
+    bgColor:     data.bgColor     || '#111e0f',
+    heroStart:   data.heroStart   || { tx: 20, ty: 14 },
+    nextMap:     data.nextMap     || '',
+    nextMapEntry: data.nextMapEntry || { tx: 4, ty: 14 },
+  };
+
+  state.tileLayers = (data.tileLayers || []).map(l => ({
+    id:        l.id || ('layer_' + Math.random().toString(36).slice(2)),
+    name:      l.name || 'Layer',
+    tilesetId: l.tilesetId || TILESET_KEYS[0] || 'bog_ground',
+    visible:   l.visible !== false,
+    alpha:     l.alpha ?? 1,
+    tiles:     (l.tiles && l.tiles.length === cols * rows)
+                 ? l.tiles.slice()
+                 : new Array(cols * rows).fill(-1),
+  }));
+  state.activeTileLayerIdx = 0;
+
+  state.objects = (data.objects || []).map(o => ({
+    id:          o.id || generateId(o.type || 'deco'),
+    assetKey:    '',
+    src:         o.image || '',
+    tx:          o.tx ?? 0,
+    ty:          o.ty ?? 0,
+    dispW:       o.imageW || o.imageSize || 64,
+    dispH:       o.imageH || o.imageSize || 64,
+    type:        o.type || 'deco',
+    label:       o.label || '',
+    zLayer:      o.zLayer ?? 0,
+    tags:        o.tags || [],
+    orcType:     o.orcType || 'orc1',
+    enemyZone:   o.enemyZone || 'bog',
+    enemyId:     o.enemyId || '',
+    enemyName:   o.enemyName || '',
+    spellId:     o.spellId || '',
+    sparkColor:  o.sparkColor || '#a78bfa',
+    goldAmount:  o.gold || 10,
+    targetMap:   o.targetMap || '',
+    portalSpark: o.sparkColor || '#c084fc',
+  }));
+
+  state.selectedId = null;
+  state.objCounter = state.objects.length + 1;
+  syncMapSettingsUI();
+  updateCountStatus();
+  updateLayerCount();
+  updateProperties();
+  buildLayerPanel();
+  resizeCanvas();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOOLBAR BUTTONS
+// ═══════════════════════════════════════════════════════════════════════════
+document.getElementById('tool-select').addEventListener('click', () => setTool('select'));
+document.getElementById('tool-tile').addEventListener('click',   () => setTool('tile'));
+document.getElementById('tool-erase').addEventListener('click',  () => setTool('erase'));
+
+// Brush size buttons
+document.querySelectorAll('.brush-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.brushSize = parseInt(btn.dataset.size);
+    document.querySelectorAll('.brush-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Tileset picker select
+document.getElementById('picker-tileset-sel').addEventListener('change', e => {
+  state.activeTilesetId = e.target.value;
+  state.selectedTile = -1;
+  document.getElementById('picker-status').textContent = 'Click to select tile · Right-click = erase';
+  buildTilesetPicker();
+});
+
+// Add layer button
+document.getElementById('btn-add-layer').addEventListener('click', () => {
+  const tsId = document.getElementById('new-layer-ts').value;
+  if (!tsId) return;
+  pushUndo();
+  addLayer(tsId);
+  // Auto-switch to tile tool with the new layer's tileset active
+  state.activeTilesetId = tsId;
+  document.getElementById('picker-tileset-sel').value = tsId;
+  setTool('tile');
+  // Switch Layers tab to stay visible after adding
+});
+
+document.getElementById('btn-grid').addEventListener('click', () => {
+  state.showGrid = !state.showGrid;
+  document.getElementById('btn-grid').classList.toggle('active', state.showGrid);
+  render();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Delete all objects from the map? (tile layers are preserved)')) return;
+  pushUndo();
+  state.objects = [];
+  state.selectedId = null;
+  updateCountStatus();
+  updateProperties();
+  render();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+// Populate tileset dropdowns
+buildTilesetOptions(document.getElementById('picker-tileset-sel'), state.activeTilesetId);
+buildTilesetOptions(document.getElementById('new-layer-ts'),       state.activeTilesetId);
+
+buildLibrary();
+buildLayerPanel();
+initPickerEvents();
+bindProps();
+bindMapSettings();
+syncMapSettingsUI();
+resizeCanvas();
+document.getElementById('btn-grid').classList.add('active');
+</script>
+</body>
+</html>
