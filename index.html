@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0e0a1a">
+  <meta name="description" content="Spell Adventure — A turn-based pixel art RPG where you collect spells and fight enemies.">
+  <title>Spell Adventure</title>
+
+  <!-- Preconnect for fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/battle.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/map.css">
+
+  <style>
+    /* ── Inline critical styles ── */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: #08050f;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 20px; z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #loading-screen.hidden { opacity: 0; pointer-events: none; }
+    .loading-logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(14px, 4vw, 28px);
+      color: #a78bfa;
+      text-shadow: 0 0 24px rgba(167,139,250,0.8);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .loading-bar-wrap {
+      width: min(260px, 80vw);
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      border-radius: 4px;
+      animation: loadingPulse 1.2s ease-in-out infinite;
+    }
+    .loading-sub {
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      color: rgba(107,94,138,0.8);
+    }
+    @keyframes loadingPulse {
+      0%,100% { width: 30%; margin-left: 0; }
+      50%      { width: 60%; margin-left: 20%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-logo">Spell<br>Adventure</div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-sub">Loading assets...</div>
+</div>
+
+<!-- Main Game Container -->
+<div id="game-screen" class="game-screen screen-enter"></div>
+
+<!-- ─── DATA LAYER ──────────────────────────────────────────────── -->
+<script src="js/data/spells.js"></script>
+<script src="js/data/world.js"></script>
+<script src="js/data/enemies.js"></script>
+<script src="js/data/maps.js"></script>
+
+<!-- ─── CORE ────────────────────────────────────────────────────── -->
+<script src="js/core/EventBus.js"></script>
+<script src="js/core/SaveManager.js"></script>
+
+<!-- ─── ENTITIES ────────────────────────────────────────────────── -->
+<script src="js/entities/Combatant.js"></script>
+<script src="js/entities/Hero.js"></script>
+<script src="js/entities/Enemy.js"></script>
+
+<!-- ─── SYSTEMS ─────────────────────────────────────────────────── -->
+<script src="js/systems/SpellResolver.js"></script>
+<script src="js/systems/AIBrain.js"></script>
+<script src="js/systems/BattleEngine.js"></script>
+
+<!-- ─── UI ──────────────────────────────────────────────────────── -->
+<script src="js/ui/Animator.js"></script>
+<script src="js/ui/BattleView.js"></script>
+<script src="js/ui/SpellBookView.js"></script>
+<script src="js/ui/WorldView.js"></script>
+<script src="js/ui/MapView.js"></script>
+<script src="js/ui/MenuView.js"></script>
+
+<!-- ─── ENTRY POINT ─────────────────────────────────────────────── -->
+<script src="js/main.js"></script>
+
+<script>
+  // Remove loading screen once fonts + scripts are ready
+  (function() {
+    const loadingEl = document.getElementById('loading-screen');
+    const hide = () => {
+      if (loadingEl) {
+        loadingEl.classList.add('hidden');
+        setTimeout(() => loadingEl.remove(), 600);
+      }
+    };
+    // Hide after fonts load or 2.5s max
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(hide);
+    }
+    setTimeout(hide, 2500);
+  })();
+</script>
+
+</body>
+</html>
